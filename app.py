@@ -35,6 +35,9 @@ def actualizar_cache():
         print("✔ Caché actualizado")
         time.sleep(30)
 
+# Lanzar el hilo de actualización de caché siempre
+threading.Thread(target=actualizar_cache, daemon=True).start()
+
 @app.route("/api/<grupo>")
 def obtener_servidores(grupo):
     grupo = grupo.lower()
@@ -49,5 +52,4 @@ def static_files(archivo):
     return app.send_static_file(archivo)
 
 if __name__ == "__main__":
-    threading.Thread(target=actualizar_cache, daemon=True).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
