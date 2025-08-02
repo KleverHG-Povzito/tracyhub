@@ -15,12 +15,13 @@ def cargar_servidores():
 
 SERVIDORES = cargar_servidores()
 
-# Diccionario global para almacenar la caché
+# Diccionario global para almacenar la caché y la hora de última actualización
 server_cache = {}
+last_update = 0  # Epoch timestamp
 
 # Función que actualiza la caché cada 30 segundos
 def actualizar_cache():
-    global server_cache
+    global server_cache, last_update
     while True:
         nuevo_cache = {}
         for grupo, servidores in SERVIDORES.items():
@@ -32,7 +33,8 @@ def actualizar_cache():
                     datos.append(info)
             nuevo_cache[grupo] = datos
         server_cache = nuevo_cache
-        print("✔ Caché actualizado")
+        last_update = int(time.time())
+        print(f"✔ Caché actualizado - {time.strftime('%H:%M:%S')}")
         time.sleep(30)
 
 # Lanzar el hilo de actualización de caché siempre
@@ -41,7 +43,10 @@ threading.Thread(target=actualizar_cache, daemon=True).start()
 @app.route("/api/<grupo>")
 def obtener_servidores(grupo):
     grupo = grupo.lower()
-    return jsonify(server_cache.get(grupo, []))
+    return jsonify({
+        "servidores": server_cache.get(grupo, []),
+        "actualizado": last_update
+    })
 
 @app.route("/")
 def index():

@@ -1,11 +1,15 @@
 const grupos = ["lalohlz", "unknown", "heizemod", "sirplease"];
-let segundosDesdeActualizacion = 0;
+
+let timestampUltimaActualizacion = 0;
 
 function actualizarContador() {
-  const texto = `Actualizado hace ${segundosDesdeActualizacion} segundo${segundosDesdeActualizacion !== 1 ? 's' : ''}`;
-  document.getElementById("ultima-actualizacion").textContent = texto;
-  segundosDesdeActualizacion++;
+  if (timestampUltimaActualizacion > 0) {
+    const segundos = Math.floor(Date.now() / 1000) - timestampUltimaActualizacion;
+    const texto = `Actualizado hace ${segundos} segundo${segundos !== 1 ? 's' : ''}`;
+    document.getElementById("ultima-actualizacion").textContent = texto;
+  }
 }
+
 
 function actualizarTodo() {
   grupos.forEach(actualizarGrupo);
@@ -216,8 +220,11 @@ function actualizarGrupo(nombre) {
 
   fetch(`/api/${nombre}`)
     .then(res => res.json())
-    .then(servidores => {
-      const fragment = document.createDocumentFragment();
+    .then(data => {
+    const servidores = data.servidores || [];
+    timestampUltimaActualizacion = data.actualizado || Math.floor(Date.now() / 1000);
+
+    const fragment = document.createDocumentFragment();
 
       servidores.forEach((s, i) => {
         let jugadores = "?";
