@@ -275,8 +275,6 @@ function actualizarGrupo(nombre) {
       contenedor.querySelectorAll('.fila:not(.encabezado)').forEach(f => f.remove());
       contenedor.appendChild(fragment);
 
-      // Reinicia el contador al recibir nueva información
-      segundosDesdeActualizacion = 0;
     })
     .catch(error => {
       console.error("Error al obtener servidores:", error);
