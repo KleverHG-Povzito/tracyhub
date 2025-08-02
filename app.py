@@ -15,12 +15,13 @@ def cargar_servidores():
 
 SERVIDORES = cargar_servidores()
 
-# Diccionario global para almacenar la caché y la hora de última actualización
+# Diccionario global para almacenar la caché
 server_cache = {}
-last_update = 0  # Epoch timestamp
+
+# Inicializar timestamp con valor entero
+ultimo_cache_timestamp = int(time.time())
 
 # Función que actualiza la caché cada 30 segundos
-ultimo_cache_timestamp = time.time()
 def actualizar_cache():
     global server_cache, ultimo_cache_timestamp
     while True:
@@ -33,12 +34,13 @@ def actualizar_cache():
                 if info:
                     datos.append(info)
             nuevo_cache[grupo] = datos
+        
         server_cache = nuevo_cache
-        ultimo_cache_timestamp = time.time()  # Actualiza la hora
-        print("✔ Caché actualizado")
+        ultimo_cache_timestamp = int(time.time())  # Usamos int() para quitar decimales
+        print(f"✔ Caché actualizado (Timestamp: {ultimo_cache_timestamp})")
         time.sleep(30)
 
-# Lanzar el hilo de actualización de caché siempre
+# Lanzar el hilo de actualización de caché
 threading.Thread(target=actualizar_cache, daemon=True).start()
 
 @app.route("/api/<grupo>")
@@ -46,7 +48,7 @@ def obtener_servidores(grupo):
     grupo = grupo.lower()
     return jsonify({
         "servidores": server_cache.get(grupo, []),
-        "actualizado": ultimo_cache_timestamp
+        "actualizado": ultimo_cache_timestamp  # Enviamos el timestamp como entero
     })
 
 @app.route("/")

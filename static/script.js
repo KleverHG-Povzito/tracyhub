@@ -4,9 +4,14 @@ let timestampUltimaActualizacion = 0;
 
 function actualizarContador() {
   if (timestampUltimaActualizacion > 0) {
-    const segundos = Math.floor(Date.now() / 1000) - timestampUltimaActualizacion;
-    const texto = `Actualizado hace ${segundos} segundo${segundos !== 1 ? 's' : ''}`;
-    document.getElementById("ultima-actualizacion").textContent = texto;
+    const ahora = Math.floor(Date.now() / 1000);
+    const segundos = ahora - timestampUltimaActualizacion;
+    const elemento = document.getElementById("ultima-actualizacion");
+    
+    if (elemento) {
+      const texto = `Actualizado hace ${segundos} segundo${segundos !== 1 ? 's' : ''}`;
+      elemento.textContent = texto;
+    }
   }
 }
 
@@ -222,7 +227,7 @@ function actualizarGrupo(nombre) {
     .then(res => res.json())
     .then(data => {
     const servidores = data.servidores || [];
-    timestampUltimaActualizacion = data.actualizado || Math.floor(Date.now() / 1000);
+    timestampUltimaActualizacion = Math.floor(Date.now() / 1000);
 
     const fragment = document.createDocumentFragment();
 
@@ -288,20 +293,44 @@ function actualizarTodo() {
 
 // Inicializar la aplicación
 async function inicializar() {
-  await cargarServersIPs();
-  actualizarTodo();
+  try {
+    await cargarServersIPs();
+    await actualizarTodo();  // Añadido await para asegurar completitud
+    
+    // Iniciar contador inmediatamente con verificación
+    if (typeof actualizarContador === 'function') {
+      actualizarContador();
+    } else {
+      console.error('Error: actualizarContador no está definido');
+    }
+    
+    // Configurar intervalos con verificación de funciones
+    if (typeof actualizarContador === 'function') {
+      setInterval(actualizarContador, 1000);
+    }
+    
+    if (typeof actualizarTodo === 'function') {
+      setInterval(actualizarTodo, 30000);
+    }
+    
+    // Configurar evento de teclado para cerrar modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && typeof cerrarModal === 'function') {
+        cerrarModal();
+      }
+    });
+    
+    console.log('Aplicación inicializada correctamente');
+    
+  } catch (error) {
+    console.error('Error durante la inicialización:', error);
+    mostrarNotificacion('⚠️ Error al iniciar la aplicación');
+  }
 }
 
-// Cerrar modal con tecla Escape
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    cerrarModal();
-  }
-});
-
-// Ejecutar inicialización
-inicializar();
-
-// Actualizar cada 30 segundos
-setInterval(actualizarTodo, 30000);
-setInterval(actualizarContador, 1000);
+// Ejecutar inicialización con verificación de carga del DOM
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  setTimeout(inicializar, 100);
+} else {
+  document.addEventListener('DOMContentLoaded', inicializar);
+}
