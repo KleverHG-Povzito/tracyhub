@@ -88,13 +88,40 @@
   line-height: 1.5;
 }
 
-h1 { 
-  text-align: center; 
-  color: #fff;
-  margin-bottom: 30px;
-  font-size: 2em;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  padding: 15px 30px;
+  margin-bottom: 20px;
 }
+
+.logo a {
+  font-size: 1.6em;
+  font-weight: bold;
+  color: #fff;
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-links a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.95em;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+  color: #4ecdc4;
+}
+
+
 
 .contenedores-grid {
   display: grid;

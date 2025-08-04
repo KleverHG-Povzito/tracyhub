@@ -1,12 +1,15 @@
 const grupos = ["lalohlz", "unknown", "heizemod", "sirplease"];
 
-let timestampUltimaActualizacion = 0;
+let timestampUltimaActualizacion = 0; // Se actualizará desde el servidor
 
 function actualizarContador() {
   if (timestampUltimaActualizacion > 0) {
     const ahora = Math.floor(Date.now() / 1000);
     const segundos = ahora - timestampUltimaActualizacion;
     const elemento = document.getElementById("ultima-actualizacion");
+    
+    // <<< ESTE console.log TE AYUDARÁ A VER EL CONTADOR EN TIEMPO REAL
+    console.log(`Contador: Ahora=${ahora}, UltimaActualizacion=${timestampUltimaActualizacion}, Segundos=${segundos}`); 
     
     if (elemento) {
       const texto = `Actualizado hace ${segundos} segundo${segundos !== 1 ? 's' : ''}`;
@@ -20,48 +23,8 @@ function actualizarTodo() {
   grupos.forEach(actualizarGrupo);
 }
 
-// Variable para almacenar las IPs cargadas desde el JSON
-let serversIPs = {};
-
-// Cargar IPs desde servers.json
-async function cargarServersIPs() {
-  try {
-    const response = await fetch('servers.json');
-    const data = await response.json();
-    
-    // Convertir las claves a minúsculas para que coincidan con los nombres de grupo
-    serversIPs = {
-      'lalohlz': data.LaloHlz || [],
-      'heizemod': data.Heizemod || [],
-      'sirplease': data.sirplease || [],
-      'unknown': data.unknown || []
-    };
-    
-    console.log('IPs de servidores cargadas correctamente');
-  } catch (error) {
-    console.error('Error al cargar servers.json:', error);
-    // Fallback en caso de error - mantener vacío para evitar errores
-    serversIPs = {
-      'lalohlz': [],
-      'heizemod': [],
-      'sirplease': [],
-      'unknown': []
-    };
-  }
-}
-
 // Función para mostrar el modal con la IP
-function mostrarModalIP(serverName, grupo, indice) {
-  const ips = serversIPs[grupo];
-  if (!ips || !ips[indice]) {
-    console.error('IP no encontrada para:', grupo, indice);
-    mostrarNotificacion('❌ IP no disponible');
-    return;
-  }
-  
-  const [ip, puerto] = ips[indice];
-  const ipCompleta = `${ip}:${puerto}`;
-  
+function mostrarModalIP(serverName, ipCompleta) {
   // Crear el modal si no existe
   let modal = document.getElementById('modal-ip');
   if (!modal) {
@@ -88,17 +51,17 @@ function mostrarModalIP(serverName, grupo, indice) {
     `;
     document.body.appendChild(modal);
   }
-  
+
   // Actualizar contenido del modal
   document.getElementById('modal-server-name').textContent = serverName;
   document.getElementById('modal-ip-text').textContent = ipCompleta;
-  
+
   // Guardar la IP actual para las funciones de copiado
   window.currentIP = ipCompleta;
-  
+
   // Mostrar el modal
   modal.style.display = 'block';
-  
+
   // Cerrar modal al hacer clic fuera de él
   modal.onclick = function(e) {
     if (e.target === modal) {
@@ -107,7 +70,6 @@ function mostrarModalIP(serverName, grupo, indice) {
   };
 }
 
-// Función para cerrar el modal
 function cerrarModal() {
   const modal = document.getElementById('modal-ip');
   if (modal) {
@@ -115,12 +77,10 @@ function cerrarModal() {
   }
 }
 
-// Función para copiar solo la IP
 function copiarIP() {
   navigator.clipboard.writeText(window.currentIP).then(() => {
     mostrarNotificacion('IP copiada al portapapeles! 📋');
   }).catch(() => {
-    // Fallback para navegadores que no soportan clipboard API
     const textArea = document.createElement('textarea');
     textArea.value = window.currentIP;
     document.body.appendChild(textArea);
@@ -131,13 +91,11 @@ function copiarIP() {
   });
 }
 
-// Función para copiar comando connect
 function copiarConexion() {
   const comando = `connect ${window.currentIP}`;
   navigator.clipboard.writeText(comando).then(() => {
     mostrarNotificacion('Comando connect copiado! 🎮');
   }).catch(() => {
-    // Fallback
     const textArea = document.createElement('textarea');
     textArea.value = comando;
     document.body.appendChild(textArea);
@@ -148,7 +106,6 @@ function copiarConexion() {
   });
 }
 
-// Función para mostrar notificaciones
 function mostrarNotificacion(mensaje) {
   const notif = document.createElement('div');
   notif.style.cssText = `
@@ -165,13 +122,12 @@ function mostrarNotificacion(mensaje) {
   `;
   notif.textContent = mensaje;
   document.body.appendChild(notif);
-  
+
   setTimeout(() => {
     notif.remove();
   }, 3000);
 }
 
-// Agregar estilos de animación para la notificación
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideInRight {
@@ -217,19 +173,34 @@ function crearTablaEncabezado() {
 function actualizarGrupo(nombre) {
   const contenedor = document.getElementById(nombre);
 
-  // Solo inicializa el contenedor si es la primera vez
   if (!contenedor.dataset.inicializado) {
     contenedor.innerHTML = `<h2>${nombre.toUpperCase()}</h2>` + crearTablaEncabezado();
     contenedor.dataset.inicializado = "true";
   }
 
   fetch(`/api/${nombre}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) { // Verifica si la respuesta HTTP es exitosa
+        console.error(`Error HTTP al obtener servidores para ${nombre}: ${res.status} ${res.statusText}`);
+        throw new Error('Error de red o servidor');
+      }
+      return res.json();
+    })
     .then(data => {
-    const servidores = data.servidores || [];
-    timestampUltimaActualizacion = Math.floor(Date.now() / 1000);
+      // <<< ESTE console.log TE AYUDARÁ A VER SI LOS DATOS LLEGAN DEL BACKEND
+      console.log(`Datos recibidos para ${nombre}:`, data); 
+      const servidores = data.servidores || [];
+      
+      // VERIFICAR QUE data.actualizado EXISTE Y SE ACTUALIZA
+      if (data.actualizado !== undefined) {
+        timestampUltimaActualizacion = data.actualizado; 
+        console.log(`Timestamp del servidor para ${nombre}: ${data.actualizado}`);
+        console.log(`timestampUltimaActualizacion global después de la actualización: ${timestampUltimaActualizacion}`);
+      } else {
+        console.warn(`'actualizado' no encontrado en la respuesta para ${nombre}`);
+      }
 
-    const fragment = document.createDocumentFragment();
+      const fragment = document.createDocumentFragment();
 
       servidores.forEach((s, i) => {
         let jugadores = "?";
@@ -271,7 +242,7 @@ function actualizarGrupo(nombre) {
         `;
 
         filaDiv.addEventListener('click', () => {
-          mostrarModalIP(s.name || "Unknown", nombre, i);
+          mostrarModalIP(s.name || "Unknown", `${s.ip}:${s.port}`);
         });
 
         fragment.appendChild(filaDiv);
@@ -283,6 +254,7 @@ function actualizarGrupo(nombre) {
     })
     .catch(error => {
       console.error("Error al obtener servidores:", error);
+      mostrarNotificacion('⚠️ Error al cargar datos del servidor para ' + nombre);
     });
 }
 
@@ -294,8 +266,7 @@ function actualizarTodo() {
 // Inicializar la aplicación
 async function inicializar() {
   try {
-    await cargarServersIPs();
-    await actualizarTodo();  // Añadido await para asegurar completitud
+    await actualizarTodo(); // La primera actualización al iniciar
     
     // Iniciar contador inmediatamente con verificación
     if (typeof actualizarContador === 'function') {

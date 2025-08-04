@@ -71,7 +71,8 @@ def query_server(ip, port, max_retries=3):
     # Si falla tras los reintentos
     return None, attempts
 
-def parse_server_info(data):
+# LA CLAVE: Asegúrate de que esta línea esté así en tu archivo query.py
+def parse_server_info(data, ip=None, port=None):
     """
     Parsea la respuesta binaria del servidor y extrae información del protocolo A2S_INFO.
     Retorna un diccionario con la info o None si falla.
@@ -149,7 +150,7 @@ def parse_server_info(data):
         # Crear el formato "jugadores/máximo" que esperan las webs
         player_count = f"{players}/{max_players}"
         
-        return {
+        info = {
             "name": name,
             "map": map_name,
             "folder": folder,
@@ -165,6 +166,69 @@ def parse_server_info(data):
             "protocol": protocol,
             "app_id": app_id
         }
+        
+        # Añadir IP y puerto a la información parseada
+        if ip is not None:
+            info['ip'] = ip
+        if port is not None:
+            info['port'] = port
+
+        return info
     except Exception as e:
         print(f"Error parsing server info: {e}")
         return None
+    
+def query_players(ip, port, timeout=3):
+    """
+    Consulta los jugadores conectados a un servidor Source Engine.
+    Retorna una lista de diccionarios con nombre y frags de cada jugador.
+    """
+    challenge_request = b'\xFF\xFF\xFF\xFF\x55\xFF\xFF\xFF\xFF'
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(timeout)
+
+        # Paso 1: Solicitar challenge
+        s.sendto(challenge_request, (ip, port))
+        data, _ = s.recvfrom(4096)
+
+        if len(data) < 9 or data[4] != 0x41:
+            return []
+
+        challenge = data[5:9]
+
+        # Paso 2: Enviar consulta con challenge
+        player_request = b'\xFF\xFF\xFF\xFF\x55' + challenge
+        s.sendto(player_request, (ip, port))
+        data, _ = s.recvfrom(4096)
+        s.close()
+
+        if data[4] != 0x44:
+            return []
+
+        offset = 5
+        num_players = data[offset]
+        offset += 1
+
+        players = []
+        for _ in range(num_players):
+            index = data[offset]
+            offset += 1
+
+            name, offset = read_string(data, offset)
+            score = struct.unpack('<i', data[offset:offset+4])[0]
+            offset += 4
+
+            duration = struct.unpack('<f', data[offset:offset+4])[0]
+            offset += 4
+
+            players.append({
+                "name": name,
+                "score": score,
+                "time": round(duration, 1)
+            })
+
+        return players
+    except Exception as e:
+        print(f"Error al consultar jugadores: {e}")
+        return []
